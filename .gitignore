@@ -1,0 +1,7 @@
+.vs/
+x64/
+*.spv
+*.swp
+*.map
+*.bat
+*.pdb
