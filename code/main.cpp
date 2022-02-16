@@ -259,12 +259,11 @@ win32_process_message(Win32State* state, v2 client_rect)
 			case WM_LBUTTONUP:
 			{
 				v2 client_mouse_p = win32_get_bottom_up_client_mouse_p(state->window_handle, client_rect.y);
-				if (!state->clicked_point && !state->clicked_slider)
+				if (!state->clicked_point && !state->clicked_slider && 
+					(state->point_count < array_count(state->points)))
 				{
 					ControlPoint* point = state->points + state->point_count++;
 					point->p = client_mouse_p;
-
-					assert(state->point_count <= 20);
 				}
 
 				// cleanup

@@ -22,6 +22,7 @@ typedef double f64;
 
 #define assert(expression) if(!(expression)) {int *a = 0; *a = 0;}
 #define invalid_code_path assert(0)
+#define array_count(Array) (sizeof(Array) / sizeof(Array[0]))
 
 struct MemoryArena
 {
