@@ -5,3 +5,5 @@ x64/
 *.map
 *.bat
 *.pdb
+*.exe
+*.zip

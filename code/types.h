@@ -152,6 +152,18 @@ struct v3
 };
 
 inline v3
+V3(f32 x, f32 y, f32 z)
+{
+	v3 result = {};
+
+	result.x = x;
+	result.y = y;
+	result.z = z;
+
+	return result;
+}
+
+inline v3
 operator *(f32 value, v3 a)
 {
 	v3 result = {};

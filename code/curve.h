@@ -11,6 +11,7 @@ enum CurveMethod
 	curve_method_nli,
 	curve_method_bernstein,
 	curve_method_midpoint,
+	curve_method_newton_form,
 };
 
 #endif

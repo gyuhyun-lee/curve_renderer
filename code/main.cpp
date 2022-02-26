@@ -10,7 +10,6 @@
 #include "stb_truetype.h"
 
 // NOTE(joon) unity build
-#include "curve.cpp"
 #include "render.cpp"
 
 // NOTE(joon) global variables, not the prettiest thing to do
@@ -100,7 +99,6 @@ win32_display_buffer(HDC device_context)
 	}
 #endif
 
-
 	SwapBuffers(device_context);
 }
 
@@ -128,6 +126,7 @@ win32_create_menu(HWND window_handle)
 	AppendMenuA(hSubMenu, MF_STRING, menu_item_method_nli, "NLI");
 	AppendMenuA(hSubMenu, MF_STRING, menu_item_method_bernstein, "Bernstein");
 	AppendMenuA(hSubMenu, MF_STRING, menu_item_method_midpoint, "Midpoint");
+	AppendMenuA(hSubMenu, MF_STRING, menu_item_method_newton, "Newton Form");
 	AppendMenuA(hMenu, MF_STRING | MF_POPUP, (UINT)hSubMenu, "Select Method");
 
 	// NOTE(joon) 'Method' Menu
@@ -289,6 +288,7 @@ win32_process_message(Win32State* state, v2 client_rect)
 
 						state->point_count = 0;
 					}break;
+
 					case menu_item_exit:
 					{
 						global_is_game_running = false;
@@ -298,10 +298,12 @@ win32_process_message(Win32State* state, v2 client_rect)
 					{
 						state->show_polyline = !state->show_polyline;
 					}break;
+
 					case menu_item_show_point:
 					{
 						state->show_point = !state->show_point;
 					}break;
+
 					case menu_item_show_shell:
 					{
 						state->show_shell = !state->show_shell;
@@ -311,13 +313,20 @@ win32_process_message(Win32State* state, v2 client_rect)
 					{
 						state->method = curve_method_nli;
 					}break;
+
 					case menu_item_method_bernstein:
 					{
 						state->method = curve_method_bernstein;
 					}break;
+
 					case menu_item_method_midpoint:
 					{
 						state->method = curve_method_midpoint;
+					}break;
+
+					case menu_item_method_newton:
+					{
+						state->method = curve_method_newton_form;
 					}break;
 				}
 			}break;
@@ -632,7 +641,7 @@ WinMain(HINSTANCE hInstance,
 				}
 
 				char method_buffer[256] = {};
-
+				state.method = curve_method_newton_form;
 				f32 t_step_size = 0.005f;
 				v3 curve_color = {};
 				// NOTE(joon) draw curves 
@@ -647,6 +656,29 @@ WinMain(HINSTANCE hInstance,
 							gl_render_nli_shell(state.points, state.point_count, state.slider.cursor, client_rect, {0, 0, 1});
 						}
 						sprintf_s(method_buffer, 256, "%s", "NLI");
+
+						// NOTE(joon) : Draw slider
+						glBegin(GL_QUADS);
+						{
+							v2 cursor = lerp(state.slider.min, state.slider.cursor, state.slider.max);
+							v2 cursor_min = cursor - state.slider.cursor_half_dim;
+							v2 cursor_max = cursor + state.slider.cursor_half_dim;
+
+							glVertex2f(cursor_min.x, cursor_min.y);
+							glVertex2f(cursor_max.x, cursor_min.y);
+							glVertex2f(cursor_max.x, cursor_max.y);
+							glVertex2f(cursor_min.x, cursor_max.y);
+						}glEnd();
+
+						glBegin(GL_LINES);
+						{
+							glColor3f(0, 0, 0);
+							glVertex2f(state.slider.min.x, state.slider.min.y);
+							glVertex2f(state.slider.max.x, state.slider.max.y);
+						}glEnd();
+
+						gl_render_characters_in_line("T", state.slider.min + V2(-0.015f, 0), clip_font_half_dim, font_texture_handle, glyph_infos, font_bitmap_width, font_bitmap_height);
+
 					}break;
 
 					case curve_method_bernstein:
@@ -660,6 +692,12 @@ WinMain(HINSTANCE hInstance,
 						gl_render_midpoint_v2(&arena, state.points, state.point_count, client_rect, curve_color);
 						sprintf_s(method_buffer, 256, "%s", "MIDPOINT");
 					}break;
+
+					case curve_method_newton_form:
+					{
+						gl_render_newton_form(&arena, state.points, state.point_count, client_rect, curve_color);
+						sprintf_s(method_buffer, 256, "%s", "NEWTON FORM");
+					}break;
 				}
 
 				if (state.show_point)
@@ -669,30 +707,9 @@ WinMain(HINSTANCE hInstance,
 											{ state.point_radius, state.point_radius }, {0, 0.0f, 0.0f});
 				}
 
-				// NOTE(joon) draw slider for t in NLI
-				glBegin(GL_QUADS);
-				{
-					v2 cursor = lerp(state.slider.min, state.slider.cursor, state.slider.max);
-					v2 cursor_min = cursor - state.slider.cursor_half_dim;
-					v2 cursor_max = cursor + state.slider.cursor_half_dim;
-
-					glVertex2f(cursor_min.x, cursor_min.y);
-					glVertex2f(cursor_max.x, cursor_min.y);
-					glVertex2f(cursor_max.x, cursor_max.y);
-					glVertex2f(cursor_min.x, cursor_max.y);
-				}glEnd();
-				glBegin(GL_LINES);
-				{
-					glColor3f(0, 0, 0);
-					glVertex2f(state.slider.min.x, state.slider.min.y);
-					glVertex2f(state.slider.max.x, state.slider.max.y);
-				}glEnd();
-
 				char buffer[256] = {};
 				sprintf_s(buffer, 256, "DEGREE %d\nMETHOD %s", state.point_count + 1, method_buffer);
 				gl_render_characters_in_line(buffer, {-0.98f, 0.95f}, clip_font_half_dim, font_texture_handle, glyph_infos, font_bitmap_width, font_bitmap_height);
-
-				gl_render_characters_in_line("T", state.slider.min + V2(-0.015f, 0), clip_font_half_dim, font_texture_handle, glyph_infos, font_bitmap_width, font_bitmap_height);
 
 				// TODO(joon) hack to fallback memory arena 
 				arena.used = 0;

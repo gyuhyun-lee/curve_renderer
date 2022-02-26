@@ -16,6 +16,7 @@ enum Win32MenuItemID
 	menu_item_method_nli,
 	menu_item_method_bernstein,
 	menu_item_method_midpoint,
+	menu_item_method_newton,
 };
 
 struct Win32OffscreenBuffer

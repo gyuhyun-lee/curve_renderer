@@ -492,6 +492,106 @@ gl_render_midpoint_v2(MemoryArena *arena, ControlPoint *control_points, i32 poin
 }
 
 internal void
+calculate_g_in_newton_form(f64* g_x, f64 *g_y, u32 input_start_index, u32 input_count, u32 denominator)
+{
+	u32 one_past_input_end_index = input_start_index + input_count;
+	u32 output_index = one_past_input_end_index;
+
+	for (u32 input_index = input_start_index;
+		input_index < one_past_input_end_index - 1;
+		++input_index)
+	{
+		g_x[output_index] = (g_x[input_index + 1] - g_x[input_index]) / denominator;
+		g_y[output_index] = (g_y[input_index + 1] - g_y[input_index]) / denominator;
+
+		output_index++;
+	}
+}
+
+internal f64
+get_newton_form_value(f64* g, u32 g_count, u32 point_count, f64 t)
+{
+	f64 result = 0.0;
+
+	u32 input_stride = point_count;
+	u32 t_count = 0;
+	for (u32 g_index = 0;
+		g_index < g_count;
+		)
+	{
+		f64 coefficient = g[g_index];
+
+		for (u32 t_index = 0;
+			t_index < t_count;
+			++t_index)
+		{
+			coefficient *= (t - (f64)t_index);
+		}
+
+		result += coefficient; // first value of the newton form
+
+		g_index += input_stride;
+		input_stride--;
+		t_count++;
+	}
+
+	return result;
+}
+
+internal void
+gl_render_newton_form(MemoryArena* arena, ControlPoint* control_points, i32 point_count, v2 client_rect, v3 color)
+{
+	if (point_count > 1)
+	{
+		glBegin(GL_LINE_STRIP);
+		{
+			glColor3f(color.r, color.g, color.b);
+
+			u32 g_count = gauss_sum(1, point_count);
+			// TODO(joon) precision issue, use other type?
+			f64* g_x = push_array(arena, f64, g_count);
+			f64* g_y = push_array(arena, f64, g_count);
+
+			// Copy the input values that are needed to calculate g[]
+			for (u32 point_index = 0;
+				point_index < (u32)point_count;
+				++point_index)
+			{
+				g_x[point_index] = control_points[point_index].p.x;
+				g_y[point_index] = control_points[point_index].p.y;
+			}
+
+			u32 input_count = point_count;
+			u32 g_denominator = 1;
+			for (u32 input_start_index = 0;
+				input_start_index < g_count;
+				)
+			{
+				calculate_g_in_newton_form(g_x, g_y, input_start_index, input_count, g_denominator);
+
+				g_denominator++;
+				input_start_index += input_count;
+				input_count--;
+			}
+
+			for (f64 t = 0.0f;
+				t <= (f64)(point_count - 1);
+				t += 0.0001)
+			{
+				f64 x = get_newton_form_value(g_x, g_count, point_count, t);
+				f64 y = get_newton_form_value(g_y, g_count, point_count, t);
+
+				v2 client_p = V2((f32)x, (f32)y);
+				v2 clip_p = get_clip_p(client_p, client_rect);
+
+				glVertex2f(clip_p.x, clip_p.y);
+			}
+
+		}glEnd();
+	}
+}
+
+internal void
 gl_render_characters_in_line(const char *characters, 
 							v2 start_p, v2 half_dim, 
 							GLuint font_texture_ID, stbtt_bakedchar *glyph_infos, 
